@@ -41,13 +41,13 @@ class CompressionActivity : ComponentActivity() {
 
         setContent {
             JPEGCompressorTheme {
-                val originalBitmapSize by compressionViewModel.originalBitmapSize.collectAsState()
+                val originalBitmap by compressionViewModel.originalBitmap.collectAsState()
                 val compressedBitmap by compressionViewModel.compressedBitmap.collectAsState()
                 val compressionLevel by compressionViewModel.compressionLevel.collectAsState()
 
                 Scaffold(modifier = Modifier.fillMaxSize()) {
                     CompressionScreen(
-                        originalBitmapSize = originalBitmapSize,
+                        originalBitmapSize = originalBitmap?.second ?: 0,
                         compressedBitmap = compressedBitmap.first,
                         compressedSize = compressedBitmap.second?.size?.sizeInKB() ?: 0,
                         compressionLevel = compressionLevel,

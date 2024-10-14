@@ -46,12 +46,11 @@ class PreviewActivity : ComponentActivity() {
             JPEGCompressorTheme {
                 val originalBitmap by previewViewModel.originalBitmap.collectAsState()
                 val compressedBitmap by previewViewModel.compressedBitmap.collectAsState()
-                val originalBitmapSize by previewViewModel.originalBitmapSize.collectAsState()
                 Scaffold(modifier = Modifier.fillMaxSize()) {
                     PreviewScreen(
-                        originalBitmap = originalBitmap,
+                        originalBitmap = originalBitmap?.first,
                         compressedBitmap = compressedBitmap,
-                        originalBitmapSize = originalBitmapSize,
+                        originalBitmapSize = originalBitmap?.second ?: 0,
                         compressedBitmapSize = byteArray?.size?.sizeInKB() ?: 0
                     )
                 }
