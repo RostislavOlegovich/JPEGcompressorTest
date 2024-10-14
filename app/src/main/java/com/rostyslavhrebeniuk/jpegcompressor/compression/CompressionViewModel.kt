@@ -12,8 +12,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapMerge
+import kotlinx.coroutines.flow.onCompletion
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -23,31 +26,39 @@ class CompressionViewModel(application: Application) : AndroidViewModel(applicat
     private val getBitmapFromUriUseCase by lazy { GetBitmapFromUriUseCase(appContext) }
     private val compressImageUseCase by lazy { CompressImageUseCase() }
 
-
-    //for additional backpressure setup
-//    private val _isCompressing = MutableStateFlow(false)
+    private val _isCompressing = MutableStateFlow(false)
 
     val originalBitmap = MutableStateFlow<Pair<Bitmap, Int>?>(null)
 
     private val _compressionLevel = MutableStateFlow(100)
     val compressionLevel: StateFlow<Int> = _compressionLevel
 
+    private val debounceDuration: Long = setupDebounceDuration()
+    private fun setupDebounceDuration(): Long {
+        val coreCount = Runtime.getRuntime().availableProcessors()
+
+        return when {
+            coreCount <= 2 -> 50L // Для слабых телефонов
+            coreCount <= 4 -> 20L // Для средних телефонов
+            else -> 10L // Для сильных телефонов
+        }
+    }
+
     private val _compressedBitmap: StateFlow<Pair<Bitmap?, ByteArray?>> =
         combine(
-            _compressionLevel,
-//                .debounce(if (_isCompressing.value) 0L else 10L),
+            _compressionLevel.debounce(if (_isCompressing.value) 0L else debounceDuration),
             originalBitmap.filterNotNull(),
             ::Pair
         ).flatMapMerge { (level, bitmap) ->
             compressImageUseCase(bitmap = bitmap.first, quality = level)
-//                .onStart {
-//                    println("CompressionViewModel: onStart")
-//                    _isCompressing.value = true
-//                }
-//                .onCompletion {
-//                    println("CompressionViewModel: onCompletion")
-//                    _isCompressing.value = false
-//                }
+                .onStart {
+                    println("CompressionViewModel: onStart")
+                    _isCompressing.value = true
+                }
+                .onCompletion {
+                    println("CompressionViewModel: onCompletion")
+                    _isCompressing.value = false
+                }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, originalBitmap.value?.first to null)
 
     val compressedBitmap: StateFlow<Pair<Bitmap?, ByteArray?>> = _compressedBitmap
